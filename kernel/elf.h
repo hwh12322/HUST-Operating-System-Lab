@@ -6,6 +6,31 @@
 
 #define MAX_CMDLINE_ARGS 64
 
+// Section header
+typedef struct elf_sect_header_table {
+  uint32 sh_name;		/* 该成员指定节的名称。 */
+  uint32 sh_type;		/* 该成员对该部分的内容和语义进行分类 */
+  uint64 sh_flags;		/* Miscellaneous section attributes */
+  uint64 sh_addr;		/* Section virtual addr at execution */
+  uint64 sh_offset;		/* 该成员的值给出了从文件开头到该节中第一个字节的字节偏移量 */
+  uint64 sh_size;		/* 该成员给出了该节的大小（以字节为单位） */
+  uint32 sh_link;		/* 该成员保存一个节头表索引链接，其解释取决于节类型 */
+  uint32 sh_info;		/* Additional section information */
+  uint64 sh_addralign;	/* Section alignment */
+  uint64 sh_entsize;	/* 某些节保存固定大小条目的表，例如符号表。对于这样的部分，该成员给出每个条目的大小（以字节为单位）。如果该节不包含固定大小条目的表，则该成员包含 0。 */
+} elf_sect_header;
+
+
+typedef struct symtab_table {
+  uint32 st_name;		/* 符号名称在字符串表中的偏移（4字节） */
+  unsigned char	st_info;	/* 符号的类型和绑定属性（1字节）*/
+  unsigned char	st_other;	/* 其它信息（1字节） */
+  uint16 st_shndx;		/* 符号相关联的节索引（2字节） */
+  uint64 st_value;		/* 符号的值，通常是地址（8字节） */
+  uint64 st_size;		/* 符号的大小（8字节） */
+} elf_sym;
+
+
 // elf header structure
 typedef struct elf_header_t {
   uint32 magic;
@@ -55,6 +80,7 @@ typedef struct elf_ctx_t {
   elf_header ehdr;
 } elf_ctx;
 
+void loading_functionname(elf_ctx *ctx);
 elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
 

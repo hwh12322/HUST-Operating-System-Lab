@@ -38,6 +38,9 @@ ssize_t sys_user_exit(uint64 code) {
 int print_functionname(uint64 ret_addr) {
   for(int i=0;i<symcount;i++){
     if(ret_addr >= symbols[i].st_value && ret_addr < symbols[i].st_value+symbols[i].st_size){
+    //在堆栈回溯（stack backtrace）的过程中，这样的范围检查通常用于确定当前的返回地址属于哪个函数。
+    //当函数 A 调用函数 B 时，B 的返回地址（即 A 中调用点的地址）通常位于 A 函数代码的某个位置。
+    //通过检查这个地址是否在 A 函数的地址范围内，可以确定 B 是被 A 调用的函数。
       sprint("%s\n",symnames[i]);
       if(strcmp(symnames[i],"main")==0) return 0;
       return 1;
@@ -49,7 +52,7 @@ int print_functionname(uint64 ret_addr) {
 int sys_user_print_backtrace( int depth ){
   uint64 fp = current->trapframe->regs.s0 + 8, ra = current->trapframe->regs.ra;
   fp = *(uint64 *)(fp - 16);
-  ra = *(uint64 *)(fp - 8);
+  ra = *(uint64 *)(fp - 8);//栈帧中print_backtrace函数的返回地址（在f8函数的地址范围内）
   for( int i = 0; i < depth; i++) {
     print_functionname(ra);
     fp = *(uint64 *)(fp - 16);

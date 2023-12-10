@@ -87,6 +87,7 @@ void rrsched() {
   // TIME_SLICE_LEN (means it has consumed its time slice), change its status into READY,
   // place it in the rear of ready queue, and finally schedule next process to run.
   if ( (current->tick_count + 1) >= TIME_SLICE_LEN ){
+    current->tick_count = 0;
     current->status = READY;
     insert_to_ready_queue( current ) ;
     schedule();

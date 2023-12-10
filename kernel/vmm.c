@@ -15,7 +15,15 @@
 //
 // establish mapping of virtual address [va, va+size] to phyiscal address [pa, pa+size]
 // with the permission of "perm".
-//
+//map_pages
+//用途：在虚拟地址和物理地址之间建立映射。
+//参数：
+//page_dir：页表的地址。
+//va：虚拟地址起始。
+//size：映射的大小。
+//pa：物理地址起始。
+//perm：页表项的权限。
+//行为：该函数遍历虚拟地址范围内的每一页，使用 page_walk 函数找到每个虚拟地址对应的页表项，并设置其物理地址和权限。
 int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm) {
   uint64 first, last;
   pte_t *pte;
@@ -32,7 +40,11 @@ int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm)
 
 //
 // convert permission code to permission types of PTE
-//
+//用途：将权限代码转换为页表项的权限类型。
+//参数：
+//prot：保护标志（如读、写、执行）。
+//user：指示是否为用户模式。
+//行为：根据保护标志创建页表项权限。
 uint64 prot_to_type(int prot, int user) {
   uint64 perm = 0;
   if (prot & PROT_READ) perm |= PTE_R | PTE_A;
@@ -46,7 +58,12 @@ uint64 prot_to_type(int prot, int user) {
 //
 // traverse the page table (starting from page_dir) to find the corresponding pte of va.
 // returns: PTE (page table entry) pointing to va.
-//
+//用途：遍历页表以找到特定虚拟地址的页表项。
+//参数：
+//page_dir：页表的根。
+//va：要查找的虚拟地址。
+//alloc：如果页表项不存在，是否分配一个新页。
+//行为：逐级遍历页表，直到找到虚拟地址对应的页表项。如果需要且允许，会创建新的页表项。
 pte_t *page_walk(pagetable_t page_dir, uint64 va, int alloc) {
   if (va >= MAXVA) panic("page_walk");
 
@@ -85,6 +102,11 @@ pte_t *page_walk(pagetable_t page_dir, uint64 va, int alloc) {
 //
 // look up a virtual page address, return the physical page address or 0 if not mapped.
 //
+//用途：查找虚拟地址对应的物理地址。
+//参数：
+//pagetable：页表的根。
+//va：要查找的虚拟地址。
+//行为：使用 page_walk 函数来找到虚拟地址的页表项，然后从中提取物理地址。
 uint64 lookup_pa(pagetable_t pagetable, uint64 va) {
   pte_t *pte;
   uint64 pa;
@@ -108,7 +130,10 @@ pagetable_t g_kernel_pagetable;
 
 //
 // maps virtual address [va, va+sz] to [pa, pa+sz] (for kernel).
-//
+//用途：为内核空间建立虚拟地址到物理地址的映射。
+//参数：
+//page_dir、va、pa、sz、perm：同 map_pages。
+//行为：使用 map_pages 为内核空间的虚拟地址和物理地址建立映射。
 void kern_vm_map(pagetable_t page_dir, uint64 va, uint64 pa, uint64 sz, int perm) {
   // map_pages is defined in kernel/vmm.c
   if (map_pages(page_dir, va, sz, pa, perm) != 0) panic("kern_vm_map");
@@ -116,7 +141,8 @@ void kern_vm_map(pagetable_t page_dir, uint64 va, uint64 pa, uint64 sz, int perm
 
 //
 // kern_vm_init() constructs the kernel page table.
-//
+//用途：初始化内核的页表。
+//行为：为内核的文本段和其余地址空间建立直接映射。
 void kern_vm_init(void) {
   // pagetable_t is defined in kernel/riscv.h. it's actually uint64*
   pagetable_t t_page_dir;
@@ -148,7 +174,11 @@ void kern_vm_init(void) {
 //
 // convert and return the corresponding physical address of a virtual address (va) of
 // application.
-//
+//用途：将用户空间的虚拟地址转换为物理地址。
+//参数：
+//page_dir：页表的根。
+//va：要转换的虚拟地址。
+//行为：使用 lookup_pa 找到虚拟地址对应的物理地址。
 void *user_va_to_pa(pagetable_t page_dir, void *va) {
   // TODO (lab2_1): implement user_va_to_pa to convert a given user virtual address "va"
   // to its corresponding physical address, i.e., "pa". To do it, we need to walk
@@ -168,7 +198,9 @@ void *user_va_to_pa(pagetable_t page_dir, void *va) {
 
 //
 // maps virtual address [va, va+sz] to [pa, pa+sz] (for user application).
-//
+//用途：为用户应用程序建立虚拟地址到物理地址的映射。
+//参数：同 map_pages。
+//行为：使用 map_pages 为用户空间的虚拟地址和物理地址建立映射。
 void user_vm_map(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm) {
   if (map_pages(page_dir, va, size, pa, perm) != 0) {
     panic("fail to user_vm_map .\n");
@@ -178,7 +210,13 @@ void user_vm_map(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int pe
 //
 // unmap virtual address [va, va+size] from the user app.
 // reclaim the physical pages if free!=0
-//
+//用途：取消用户空间虚拟地址的映射，并根据需要释放物理内存。
+//参数：
+//page_dir：页表的根。
+//a：要取消映射的虚拟地址。
+//size：取消映射的大小。
+//free：是否释放物理内存。
+//行为：取消虚拟地址的映射，并在需要时释放对应的物理内存。
 void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // TODO (lab2_2): implement user_vm_unmap to disable the mapping of the virtual pages
   // in [va, va+size], and free the corresponding physical pages used by the virtual
@@ -187,6 +225,10 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // (use free_page() defined in pmm.c) the physical pages. lastly, invalidate the PTEs.
   // as naive_free reclaims only one page at a time, you only need to consider one page
   // to make user/app_naive_malloc to behave correctly.
-  panic( "You have to implement user_vm_unmap to free pages using naive_free in lab2_2.\n" );
-
+  if (free)
+  {
+    pte_t PTE = lookup_pa(page_dir, (uint64)va);
+    free_page((void *)PTE);
+    PTE &= 0x1111111e;
+  }
 }

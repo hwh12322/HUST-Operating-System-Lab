@@ -164,7 +164,16 @@ int free_process( process* proc ) {
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
   proc->status = ZOMBIE;
-
+  // 检查结束子进程的直接父进程是否在等待状态
+  if (proc->parent && proc->parent->status == BLOCKED) {
+      // 检查父进程是否在等待这个特定的子进程或任意子进程
+      if (proc->parent->waiting_for_pid == proc->pid || proc->parent->waiting_for_any_child) {
+          proc->parent->status = READY;
+          insert_to_ready_queue(proc->parent);
+          proc->parent->waiting_for_pid = 0;
+          proc->parent->waiting_for_any_child = 0;
+      }
+  }
   return 0;
 }
 
@@ -242,6 +251,22 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].npages =
           parent->mapped_info[i].npages;
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
+        child->total_mapped_region++;
+        break;
+      case DATA_SEGMENT:
+        for( int j=0; j<parent->mapped_info[i].npages; j++ ){//遍历父进程数据段的每一页
+            uint64 pa = lookup_pa(parent->pagetable, parent->mapped_info[i].va+j*PGSIZE);//查找父进程页面的物理地址
+            char *newpa = alloc_page(); 
+            memcpy(newpa, (void *)pa, PGSIZE);//为子进程分配新的物理页面并复制内容
+            user_vm_map(child->pagetable, parent->mapped_info[i].va+j*PGSIZE, PGSIZE,
+                    (uint64)newpa, prot_to_type(PROT_WRITE | PROT_READ, 1));//映射新页面到子进程的虚拟地址空间
+        }
+
+        // after mapping, register the vm region (do not delete codes below!)
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages = 
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
         child->total_mapped_region++;
         break;
     }

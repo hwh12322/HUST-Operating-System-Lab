@@ -15,7 +15,9 @@
 #include "sched.h"
 
 #include "spike_interface/spike_utils.h"
-
+extern process procs[NPROC];
+process* pidprocess ;
+int child = 0;
 //
 // implement the SYS_user_print syscall
 //
@@ -95,6 +97,61 @@ ssize_t sys_user_yield() {
   return 0;
 }
 
+
+
+
+//通过修改PKE内核和系统调用，为用户程序提供wait函数的功能，wait函数接受一个参数pid：
+//当pid为-1时，父进程等待任意一个子进程退出即返回子进程的pid；
+//当pid大于0时，父进程等待进程号为pid的子进程退出即返回子进程的pid；
+//如果pid不合法或pid大于0且pid对应的进程不是当前进程的子进程，返回-1。
+ssize_t sys_user_wait(int pid) {
+  if( pid == -1 ){
+  // 遍历进程表，寻找任意一个僵尸子进程
+  // 如果没有找到，则阻塞当前进程
+    for (int i = 0; i < NPROC; i++) {
+      if (procs[i].parent == current){
+        child = 1;
+        if (procs[i].status == ZOMBIE  ) {
+          procs[i].status = FREE;
+          return i; 
+        }
+      }
+    }
+    if ( child == 1 ) {
+        child = 0;
+        current->waiting_for_any_child = 1;  // 标记为在等待任意子进程
+        current->status = BLOCKED;       // 设置当前进程状态为阻塞
+        schedule();
+        return -2;                      // 调用调度器选择另一个进程运行
+    }
+  }
+  // 查找特定 PID 的进程
+  // 如果是子进程且已结束，则处理并返回 PID
+  // 如果不是子进程或尚未结束，则阻塞或返回错误
+  else if ( pid > 0 ){
+    for (int i = 0; i < NPROC; i++) {
+        if (procs[i].status != FREE && procs[i].pid == pid) {
+            pidprocess = &procs[i]; // 返回找到的进程的指针
+        }
+    }
+    if ( pidprocess->parent->pid != current->pid ){
+      return -1;
+    }
+    if (pidprocess->status == ZOMBIE){ 
+      pidprocess->status = FREE;
+      return pidprocess->pid;
+    }
+    else{
+        current->waiting_for_pid = pid;  // 设置正在等待的子进程的 PID
+        current->status = BLOCKED;       // 设置当前进程状态为阻塞
+        schedule();                      // 调用调度器选择另一个进程运行
+        return -2;
+    }
+  }
+  else return -1;
+  return -1;
+}
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -114,6 +171,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_fork();
     case SYS_user_yield:
       return sys_user_yield();
+    case SYS_user_wait:
+      return sys_user_wait(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

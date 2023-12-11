@@ -35,6 +35,7 @@ void insert_to_ready_queue( process* proc ) {
   return;
 }
 
+
 //
 // choose a proc from the ready queue, and put it to run.
 // note: schedule() does not take care of previous current process. If the current
@@ -66,6 +67,11 @@ void schedule() {
   current = ready_queue_head;
   assert( current->status == READY );
   ready_queue_head = ready_queue_head->queue_next;
+   while (current->status == BLOCKED) 
+  {
+    // 跳过阻塞的进程，寻找下一个 READY 状态的进程
+    current = current->queue_next;
+  }
 
   current->status = RUNNING;
   sprint( "going to schedule process %d to run.\n", current->pid );

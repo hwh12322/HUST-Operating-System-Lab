@@ -89,6 +89,12 @@ typedef struct process_t {
 
   // accounting. added @lab3_3
   int tick_count;
+
+  // 添加用于阻塞和唤醒的字段
+  int waiting_for_pid __attribute__((aligned(4)));  // 等待的子进程的 PID，如果没有则为 -1
+  
+  int waiting_for_any_child;  // 标识是否在等待任意子进程结束
+
 }process;
 
 // switch to run user app
@@ -105,5 +111,8 @@ int do_fork(process* parent);
 
 // current running process
 extern process* current;
+
+
+
 
 #endif

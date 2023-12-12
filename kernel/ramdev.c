@@ -10,8 +10,10 @@
 #include "util/string.h"
 #include "spike_interface/spike_utils.h"
 #include "rfs.h"
-
+#include "vmm.h"
 struct rfs_device *rfs_device_list[MAX_RAMDISK_COUNT];
+
+
 
 //
 // write the content stored in "buff" to the "blkno"^th block of disk.

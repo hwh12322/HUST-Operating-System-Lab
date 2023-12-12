@@ -3,13 +3,14 @@
  */
 
 #include "vfs.h"
-
+#include "proc_file.h"
+#include "process.h"
 #include "pmm.h"
 #include "spike_interface/spike_utils.h"
 #include "util/string.h"
 #include "util/types.h"
 #include "util/hash_table.h"
-
+#include "vmm.h"
 struct dentry *vfs_root_dentry;               // system root direntry
 struct super_block *vfs_sb_list[MAX_MOUNTS];  // system superblock list
 struct device *vfs_dev_list[MAX_VFS_DEV];     // system device list in vfs layer
@@ -113,8 +114,17 @@ struct file *vfs_open(const char *path, int flags) {
   char miss_name[MAX_PATH_LEN];
 
   // path lookup.
-  struct dentry *file_dentry = lookup_final_dentry(path, &parent, miss_name);
-
+  char path_resolved[MAX_PATH_LEN];
+  memset(path_resolved, 0, MAX_PATH_LEN);
+  struct dentry* file_dentry = NULL;
+  if (path[0] == '.') {// relative path
+    resolve_path(path_resolved, (char*)path);
+    file_dentry = lookup_final_dentry(path_resolved, &parent, miss_name);
+  }
+  else {
+    memcpy(path_resolved, path, MAX_PATH_LEN);
+    file_dentry = lookup_final_dentry(path_resolved, &parent, miss_name);
+  }
   // file does not exist
   if (!file_dentry) {
     int creatable = flags & O_CREAT;
@@ -122,7 +132,8 @@ struct file *vfs_open(const char *path, int flags) {
     // create the file if O_CREAT bit is set
     if (creatable) {
       char basename[MAX_PATH_LEN];
-      get_base_name(path, basename);
+       get_base_name(path_resolved, basename);
+      //sprint("basename: %s\nmissname: %s\n", basename, miss_name);
 
       // a missing directory exists in the path
       if (strcmp(miss_name, basename) != 0) {

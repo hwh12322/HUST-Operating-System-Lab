@@ -155,6 +155,10 @@ process* alloc_process() {
   procs[i].pfiles = init_proc_file_management();
   sprint("in alloc_proc. build proc_file_management successfully.\n");
 
+  // initialize default cwd
+  procs[i].cwd[0] = '/';
+  procs[i].cwd[1] = 0;
+
   // return after initialization.
   return &procs[i];
 }

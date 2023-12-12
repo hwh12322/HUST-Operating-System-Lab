@@ -494,7 +494,11 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   // nlinks, i.e., the number of links.
   // blocks, i.e., its block count.
   // Note: DO NOT DELETE CODE BELOW PANIC.
-  panic("You need to implement the code of populating a disk inode in lab4_1.\n" );
+  free_dinode->size = 0; // 新文件的大小为0
+  free_dinode->type = R_FILE; // 假设RFS_FILE_TYPE是rfs文件的类型
+  free_dinode->nlinks = 1; // 初始链接数通常设为1
+  free_dinode->blocks = 0; // 新文件还没有分配块
+
 
   // DO NOT REMOVE ANY CODE BELOW.
   // allocate a free block for the file
@@ -764,8 +768,11 @@ int rfs_hook_closedir(struct vinode *dir_vinode, struct dentry *dentry) {
 // the position of the entry to be read. if offset is 0, the first entry is read,
 // if offset is 1, the second entry is read, and so on.
 // return: 0 on success, -1 when there are no more entry (end of the list).
-//
+//dir_vinode：指向目录的虚拟 inode 的指针。
+//dir：指向 dir 结构的指针，这是函数将要填充的数据结构。
+//offset：指向表示读取位置的整数的指针。
 int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
+  //计算目录项总数和每个块的目录项数
   int total_direntrys = dir_vinode->size / sizeof(struct rfs_direntry);
   int one_block_direntrys = RFS_BLKSIZE / sizeof(struct rfs_direntry);
 
@@ -776,6 +783,7 @@ int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   }
 
   // reads a directory entry from the directory cache stored in vfs inode.
+  // 从目录的 inode 中获取目录缓存，并计算出要读取的目录项的地址
   struct rfs_dir_cache *dir_cache =
       (struct rfs_dir_cache *)dir_vinode->i_fs_info;
   struct rfs_direntry *p_direntry = dir_cache->dir_base_addr + direntry_index;
@@ -787,7 +795,11 @@ int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   // the method of returning is to popular proper members of "dir", more specifically,
   // dir->name and dir->inum.
   // note: DO NOT DELETE CODE BELOW PANIC.
-  panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
+  strcpy(dir->name, p_direntry->name);
+
+  // 确保字符串以空字符结束
+  dir->name[RFS_MAX_FILE_NAME_LEN - 1] = '\0';
+  dir->inum = p_direntry->inum;          // 设置inode号
 
   // DO NOT DELETE CODE BELOW.
   (*offset)++;

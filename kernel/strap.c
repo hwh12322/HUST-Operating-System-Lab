@@ -60,16 +60,18 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault
       if (stval < USER_STACK_TOP && stval >= USER_FREE_ADDRESS_END)
+      //这样的检查是为了确认缺页异常是由于栈空间不足引起的，而不是由于访问了不合法的内存区域
       {
         void *pa = alloc_page();
         // sprint("%llx,%llx\n", stval, (uint64)pa);
+        //对于合法的栈空间缺页异常，代码分配一个新的物理页并将其映射到引起异常的虚拟地址上，从而动态地扩展栈空间
         map_pages(current->pagetable, stval & 0xfffffffff000, PGSIZE, (uint64)pa, prot_to_type(PROT_READ | PROT_WRITE, 1));
       }
       else if (stval >= USER_FREE_ADDRESS_START && stval < USER_FREE_ADDRESS_END)
+      //程序试图访问未分配的内存区域
       {
         panic("this address is not available!");
       }
-    break;
       break;
     default:
       sprint("unknown page fault.\n");

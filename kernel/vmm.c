@@ -180,20 +180,13 @@ void kern_vm_init(void) {
 //va：要转换的虚拟地址。
 //行为：使用 lookup_pa 找到虚拟地址对应的物理地址。
 void *user_va_to_pa(pagetable_t page_dir, void *va) {
-  // TODO (lab2_1): implement user_va_to_pa to convert a given user virtual address "va"
-  // to its corresponding physical address, i.e., "pa". To do it, we need to walk
-  // through the page table, starting from its directory "page_dir", to locate the PTE
-  // that maps "va". If found, returns the "pa" by using:
-  // pa = PYHS_ADDR(PTE) + (va & (1<<PGSHIFT -1))
-  // Here, PYHS_ADDR() means retrieving the starting address (4KB aligned), and
-  // (va & (1<<PGSHIFT -1)) means computing the offset of "va" inside its page.
-  // Also, it is possible that "va" is not mapped at all. in such case, we can find
-  // invalid PTE, and should return NULL.
-  uint64 PTE = lookup_pa(page_dir, (uint64)va);
-  if (!PTE)
-    return NULL;
-  void *pa = (void *)(PTE + ((uint64)va & ((1 << PGSHIFT) - 1)));
-  return pa;
+  pte_t *pte = page_walk(page_dir, (uint64)va, 0); // 在页表中查找对应的PTE
+  if (pte == NULL || (*pte & PTE_V) == 0) {
+    return NULL; // 未找到有效的PTE或`va`未映射
+  }
+  uint64 pa = PTE2PA(*pte); // 从PTE中提取物理地址
+  uint64 offset = (uint64)va & (PGSIZE - 1); // 计算页内偏移
+  return (void *)(pa + offset); // 返回完整的物理地址
 }
 
 //

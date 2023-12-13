@@ -213,7 +213,7 @@ void user_vm_map(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int pe
 //用途：取消用户空间虚拟地址的映射，并根据需要释放物理内存。
 //参数：
 //page_dir：页表的根。
-//a：要取消映射的虚拟地址。
+//va：要取消映射的虚拟地址。
 //size：取消映射的大小。
 //free：是否释放物理内存。
 //行为：取消虚拟地址的映射，并在需要时释放对应的物理内存。
@@ -227,8 +227,9 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // to make user/app_naive_malloc to behave correctly.
   if (free)
   {
-    pte_t PTE = lookup_pa(page_dir, (uint64)va);
-    free_page((void *)PTE);
-    PTE &= 0x1111111e;
+    pte_t* PTE = page_walk(page_dir,va,0);
+    uint64 pa = PTE2PA(*PTE);
+    free_page((void*)pa);
+    *PTE &= ~PTE_V;
   }
 }

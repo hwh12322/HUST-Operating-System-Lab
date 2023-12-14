@@ -157,11 +157,10 @@ void loading_functionname(elf_ctx *ctx){
   //sprint("%d %d\n", shstr_offset, shstr_sect_off);
 
 //查找 strtab 和 symtab 节
-  uint16 section_number = ctx->ehdr.shnum;//从 elf_ctx 中获取节的数量
   elf_sect_header sym;
   elf_sect_header str;
   elf_sect_header temp_section_header;
-  for(int i=0; i<section_number; i++) { //遍历所有节头，读取每个节头信息到 temp_section_header
+  for(int i=0; i< ctx->ehdr.shnum; i++) { //遍历所有节头，读取每个节头信息到 temp_section_header
     uint64 each_section_offset = ctx->ehdr.shoff + ctx->ehdr.shentsize * i;
     elf_fpread(ctx, (void*)&temp_section_header, sizeof(temp_section_header), each_section_offset );
     uint64 t = temp_section_header.sh_type;
@@ -180,7 +179,6 @@ void loading_functionname(elf_ctx *ctx){
     }
   }
   //加载符号和它们的名字
-  uint64 str_sect_off = str.sh_offset;//字符串表的偏移量
   uint64 sym_num = sym.sh_size/sizeof(elf_sym);
   int count = 0;
   for(int i = 0; i<sym_num; i++) {//遍历符号表，对每个符号，检查是否是函数（通过 st_info 判断）。如果是，读取其名称并存储。
@@ -188,10 +186,8 @@ void loading_functionname(elf_ctx *ctx){
     elf_fpread(ctx, (void*)&symbol, sizeof(symbol), sym.sh_offset + sizeof(elf_sym) * i);
     if(symbol.st_name == 0) continue;
     if(symbol.st_info == (1 << 4 | 2) ){    //STT_FUNC,检查符号是否是一个全局函数
-      char symname[32];
-      uint64 each_name_offset = str_sect_off + symbol.st_name;
-      elf_fpread(ctx, (void*)&symname, sizeof(symname), each_name_offset );
-      strcpy(symnames[count] , symname);
+      uint64 each_name_offset = str.sh_offset + symbol.st_name;
+      elf_fpread(ctx, (void*)&symnames[count], 32, each_name_offset );
       symbols[count++] = symbol;
     }
   }

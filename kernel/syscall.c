@@ -43,7 +43,6 @@ int print_functionname(uint64 ret_addr) {
     //通过检查这个地址是否在 A 函数的地址范围内，可以确定 B 是被 A 调用的函数。
       sprint("%s\n",symnames[i]);
       if(strcmp(symnames[i],"main")==0) return 0;
-      return 1;
     }
   }
   return 1;
@@ -54,7 +53,7 @@ int sys_user_print_backtrace( int depth ){
   fp = *(uint64 *)(fp - 16);
   ra = *(uint64 *)(fp - 8);//栈帧中print_backtrace函数的返回地址（在f8函数的地址范围内）
   for( int i = 0; i < depth; i++) {
-    print_functionname(ra);
+    if ( print_functionname(ra) == 0) return 0;
     fp = *(uint64 *)(fp - 16);
     ra = *(uint64 *)(fp - 8);
   } 

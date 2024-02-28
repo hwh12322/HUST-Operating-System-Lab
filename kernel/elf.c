@@ -8,6 +8,7 @@
 #include "riscv.h"
 #include "spike_interface/spike_utils.h"
 
+
 typedef struct elf_info_t {
   spike_file_t *f;
   process *p;
@@ -277,6 +278,8 @@ void load_bincode_from_host_elf(process *p) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
+
+
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 
@@ -284,4 +287,33 @@ void load_bincode_from_host_elf(process *p) {
   spike_file_close( info.f );
 
   sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+
+  loading_debug_line(&elfloader);
 }
+
+//从 ELF 文件中提取 debug_line 
+void loading_debug_line(elf_ctx *ctx){
+// 查找 shstrtab 节:
+  elf_sect_header shstr;
+  uint64 shstr_offset = ctx->ehdr.shoff + ctx->ehdr.shstrndx * ctx->ehdr.shentsize;//计算节头字符串表（shstrtab）的偏移量
+  elf_fpread(ctx, (void *)&shstr, sizeof(shstr), shstr_offset);
+  //sprint("%d\n", shstr_sh.sh_size);   208
+  char shstrtab_head[shstr.size];
+  elf_fpread(ctx, &shstrtab_head, shstr.size, shstr.offset);//从 ELF 文件中读取 shstrtab 的节头信息
+  //sprint("%d %d\n", shstr_offset, shstr_sect_off);
+
+//查找 debug_line 节
+  elf_sect_header debug_line;
+  elf_sect_header temp_section_header;
+  for(int i=0; i< ctx->ehdr.shnum; i++) { //遍历所有节头，读取每个节头信息到 temp_section_header
+    uint64 each_section_offset = ctx->ehdr.shoff + ctx->ehdr.shentsize * i;
+    elf_fpread(ctx, (void*)&temp_section_header, sizeof(temp_section_header), each_section_offset );
+    if(strcmp(shstrtab_head + temp_section_header.name,".debug_line") == 0){  //查找debug_line段
+        char debug_line_data[temp_section_header.size];
+        elf_fpread(ctx, debug_line_data, temp_section_header.size, temp_section_header.offset);
+        // 处理 debug_line_data
+        make_addr_line(ctx, debug_line_data, temp_section_header.size);
+        break;
+    }
+  }
+} 
